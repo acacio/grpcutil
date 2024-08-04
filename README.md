@@ -1,4 +1,6 @@
 # grpcutil
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Facacio%2Fgrpcutil.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Facacio%2Fgrpcutil?ref=badge_shield)
+
 gRPC Utility functions
 
 
@@ -48,3 +50,7 @@ To enable GRPCWeb, before Serve(), you can add the protocol adapter and server i
   // OPTIONAL - Enable gRPCWeb serving. Requires goroutine
   go grpcutil.StartgRPCWeb(s, grpcwebport)
 ```
+
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Facacio%2Fgrpcutil.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Facacio%2Fgrpcutil?ref=badge_large)
