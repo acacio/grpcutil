@@ -22,10 +22,15 @@ import (
 )
 
 // BasicAuthCreds is an implementation of credentials.PerRPCCredentials
-// that transforms the username and password into a base64 encoded value similar
-// to HTTP Basic xxx
+// that encodes username and password as an HTTP Basic Authorization header.
+// Use NewBasicAuthCreds to construct from outside this package.
 type BasicAuthCreds struct {
 	username, password string
+}
+
+// NewBasicAuthCreds creates a BasicAuthCreds for use as gRPC PerRPCCredentials.
+func NewBasicAuthCreds(username, password string) *BasicAuthCreds {
+	return &BasicAuthCreds{username: username, password: password}
 }
 
 // GetRequestMetadata sets the value for "authorization" key
@@ -46,14 +51,3 @@ func (b *BasicAuthCreds) Digest() string {
 	return base64.StdEncoding.EncodeToString([]byte(auth))
 }
 
-/*
-grpcAuth := &BasicAuthCreds{
-    username: *username,
-    password: *password,
-}
-
-conn, err := grpc.Dial(*target,
-    grpc.WithTransportCredentials(creds),
-    grpc.WithPerRPCCredentials(grpcAuth),
-)
-*/

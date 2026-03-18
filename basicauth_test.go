@@ -23,8 +23,15 @@ import (
 	"testing"
 )
 
+func TestNewBasicAuthCreds(t *testing.T) {
+	creds := NewBasicAuthCreds("alice", "s3cr3t")
+	if creds == nil {
+		t.Fatal("NewBasicAuthCreds returned nil")
+	}
+}
+
 func TestBasicAuthCredsGetRequestMetadata(t *testing.T) {
-	creds := &BasicAuthCreds{username: "alice", password: "s3cr3t"}
+	creds := NewBasicAuthCreds("alice", "s3cr3t")
 	md, err := creds.GetRequestMetadata(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -47,7 +54,7 @@ func TestBasicAuthCredsGetRequestMetadata(t *testing.T) {
 }
 
 func TestBasicAuthCredsGetRequestMetadata_EmptyCredentials(t *testing.T) {
-	creds := &BasicAuthCreds{}
+	creds := NewBasicAuthCreds("", "")
 	md, err := creds.GetRequestMetadata(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -61,7 +68,7 @@ func TestBasicAuthCredsGetRequestMetadata_EmptyCredentials(t *testing.T) {
 }
 
 func TestBasicAuthCredsRequireTransportSecurity(t *testing.T) {
-	creds := &BasicAuthCreds{username: "user", password: "pass"}
+	creds := NewBasicAuthCreds("user", "pass")
 	if !creds.RequireTransportSecurity() {
 		t.Error("RequireTransportSecurity should return true")
 	}
@@ -95,7 +102,7 @@ func TestBasicAuthCredsDigest(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			creds := &BasicAuthCreds{username: tc.username, password: tc.password}
+			creds := NewBasicAuthCreds(tc.username, tc.password)
 			got := creds.Digest()
 			if got != tc.want {
 				t.Errorf("Digest() = %q, want %q", got, tc.want)
@@ -105,7 +112,7 @@ func TestBasicAuthCredsDigest(t *testing.T) {
 }
 
 func TestBasicAuthCredsDigest_IsBase64(t *testing.T) {
-	creds := &BasicAuthCreds{username: "test", password: "value"}
+	creds := NewBasicAuthCreds("test", "value")
 	digest := creds.Digest()
 	if _, err := base64.StdEncoding.DecodeString(digest); err != nil {
 		t.Errorf("Digest() returned invalid base64: %v", err)
