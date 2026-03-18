@@ -1,4 +1,4 @@
-/* 
+/*
 Copyright 2021 Acacio Cruz acacio@acacio.coom
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,42 +26,41 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
-	"github.com/davecgh/go-spew/spew"
-	grpc_auth "github.com/grpc-ecosystem/go-grpc-middleware/auth"
+	grpc_auth "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/auth"
 )
 
 const prefix = "Bearer "
 
-// TokenAuth implement gRPC PerRPCCredentials interface
+// TokenAuth implements gRPC PerRPCCredentials interface using Bearer tokens.
 type TokenAuth struct {
 	Token string
 }
 
-// GetRequestMetadata implements PerRPCCredentials interface
+// GetRequestMetadata implements PerRPCCredentials interface.
 // Return value is mapped to request headers.
 func (t TokenAuth) GetRequestMetadata(ctx context.Context, in ...string) (map[string]string, error) {
 	return map[string]string{
-		"authorization": "Bearer " + t.Token,
+		"authorization": prefix + t.Token,
 	}, nil
 }
 
-// RequireTransportSecurity implements PerRPCCredentials interface
+// RequireTransportSecurity implements PerRPCCredentials interface.
 func (t TokenAuth) RequireTransportSecurity() bool {
 	return true
 }
 
-// WithPerRPCToken - helper function
+// WithPerRPCToken creates a gRPC DialOption that attaches a Bearer token to every RPC.
 func WithPerRPCToken(token string) grpc.DialOption {
 	return grpc.WithPerRPCCredentials(TokenAuth{Token: token})
 }
 
-// TokenAuthFunc - to be used with
-// https://godoc.org/github.com/grpc-ecosystem/go-grpc-middleware/auth#UnaryServerInterceptor
+// TokenAuthFunc returns an auth.AuthFunc suitable for use with
+// https://pkg.go.dev/github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/auth#UnaryServerInterceptor
 func TokenAuthFunc(srvToken string) grpc_auth.AuthFunc {
 	return func(ctx context.Context) (context.Context, error) { return TokenAuthCheck(ctx, srvToken) }
 }
 
-// TokenAuthCheck ...
+// TokenAuthCheck validates the Bearer token in the incoming gRPC context against srvToken.
 func TokenAuthCheck(ctx context.Context, srvToken string) (context.Context, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
@@ -71,7 +70,7 @@ func TokenAuthCheck(ctx context.Context, srvToken string) (context.Context, erro
 
 	auth, ok := md["authorization"]
 	if !ok {
-		log.Println("RPC auth: No auth details supplied")
+		log.Println("RPC auth: no auth details supplied")
 		return ctx, status.Errorf(codes.InvalidArgument, "no auth details supplied")
 	}
 
@@ -80,10 +79,9 @@ func TokenAuthCheck(ctx context.Context, srvToken string) (context.Context, erro
 	}
 
 	if strings.TrimPrefix(auth[0], prefix) != srvToken {
-		return ctx, status.Error(codes.Unauthenticated, "Invalid token "+auth[0])
+		return ctx, status.Error(codes.Unauthenticated, "invalid token")
 	}
 
-	log.Printf("RPC auth: %s\n", auth)
-	spew.Dump(auth)
+	log.Printf("RPC auth: authenticated successfully\n")
 	return ctx, nil
 }

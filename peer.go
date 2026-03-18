@@ -1,4 +1,4 @@
-/* 
+/*
 Copyright 2021 Acacio Cruz acacio@acacio.coom
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,14 +24,19 @@ import (
 	"google.golang.org/grpc/peer"
 )
 
-// PeerAddress returns connecion peer address
+// PeerAddress returns the connection peer address from the gRPC context.
+// Returns nil if no peer information is available.
 func PeerAddress(ctx context.Context) net.Addr {
 	p, ok := peer.FromContext(ctx)
 	if !ok {
-		println("INFO: No peer information")
+		log.Println("INFO: No peer information available in context")
 		return nil
 	}
 
-	log.Println("CONN: ", p.Addr.String(), p.AuthInfo.AuthType())
+	if p.AuthInfo != nil {
+		log.Printf("CONN: %s auth=%s\n", p.Addr.String(), p.AuthInfo.AuthType())
+	} else {
+		log.Printf("CONN: %s (no auth)\n", p.Addr.String())
+	}
 	return p.Addr
 }

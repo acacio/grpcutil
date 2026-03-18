@@ -1,4 +1,4 @@
-/* 
+/*
 Copyright 2021 Acacio Cruz acacio@acacio.coom
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,85 +18,78 @@ package grpcutil
 
 import (
 	"net/http"
-	_ "net/http/pprof" // "/debug/pprof/trace" handler
-
+	_ "net/http/pprof" // registers "/debug/pprof" handlers; trace via:
 	// curl http://localhost:9999/debug/pprof/trace?seconds=5 -o trace.out
-	// go tool trace trace.out  ( /userregions  & /usertasks )
+	// go tool trace trace.out
 
-	// "github.com/prometheus/client_golang/prometheus"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	dto "github.com/prometheus/client_model/go"
 	"google.golang.org/grpc"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	dto "github.com/prometheus/client_model/go"
 )
 
-// EnablePrometheus - sets up gRPC metrics collection and launch web collection endpoint
+// EnablePrometheus registers the gRPC server with Prometheus, enables handling-time
+// histograms, and returns an HTTP handler for the /metrics endpoint.
 func EnablePrometheus(s *grpc.Server, PORT string) http.Handler {
-	// After your registrations, Prometheus metrics are initialized.
-	println("TASKSERVER: Registering Prometheus...")
 	grpc_prometheus.Register(s)
 	grpc_prometheus.EnableHandlingTimeHistogram()
 	return promhttp.Handler()
 }
 
-// GetgRPCMetrics returns the grpc_prometheus metrics object
+// GetgRPCMetrics returns average latency in milliseconds per gRPC method name.
 func GetgRPCMetrics() map[string]float64 {
 	metrics := grpc_prometheus.DefaultServerMetrics
 
 	lats := make(map[string]float64)
 
-	// Collect all gRPC metrics and build map
 	c := make(chan prometheus.Metric)
 	go func() {
 		metrics.Collect(c)
 		close(c)
 	}()
-	// iterate through sent metrics (via channel)
+
 	for metric := range c {
-		data := dto.Metric{}
-		metric.Write(&data)
-		if data.Histogram != nil {
-			count := *data.Histogram.SampleCount
-			sum := *data.Histogram.SampleSum
-			latency := (1000.0 * sum) / float64(count) // s --> milliseconds
-			labels := data.Label
-			method := getMethod(labels)
-			lats[method] = latency
-			// fmt.Println("LATENCY:", method, latency)
+		data := &dto.Metric{}
+		metric.Write(data)
+		if h := data.GetHistogram(); h != nil {
+			count := h.GetSampleCount()
+			sum := h.GetSampleSum()
+			if count > 0 {
+				latency := (1000.0 * sum) / float64(count) // seconds → milliseconds
+				method := getMethod(data.GetLabel())
+				lats[method] = latency
+			}
 		}
 	}
 	return lats
 }
 
-// GetgRPCHistograms grabs the data for all methods
+// GetgRPCHistograms returns per-method histogram bucket distributions.
+// Each bucket maps its upper bound to the differential count (not cumulative).
 func GetgRPCHistograms() map[string]map[float64]uint64 {
 	metrics := grpc_prometheus.DefaultServerMetrics
-	// Collect all gRPC metrics and build map
+
 	c := make(chan prometheus.Metric)
 	go func() {
 		metrics.Collect(c)
 		close(c)
 	}()
-	// iterate through sent metrics (via channel)
+
 	histPerMethod := make(map[string]map[float64]uint64)
 	for metric := range c {
-		data := dto.Metric{}
-		metric.Write(&data)
-		if data.Histogram != nil {
-			buckets := data.Histogram.GetBucket()
-			labels := data.Label
-			method := getMethod(labels)
+		data := &dto.Metric{}
+		metric.Write(data)
+		if h := data.GetHistogram(); h != nil {
+			method := getMethod(data.GetLabel())
 			hist := make(map[float64]uint64)
 			var prev uint64 = 0
-			for _, v := range buckets {
-				max := v.GetUpperBound()
-				cnt := v.GetCumulativeCount()
-				// z := v.String()
-				hist[max] = cnt - prev // record just the differential
+			for _, b := range h.GetBucket() {
+				max := b.GetUpperBound()
+				cnt := b.GetCumulativeCount()
+				hist[max] = cnt - prev // differential count per bucket
 				prev = cnt
-				// fmt.Println("BUCKET:", method, max, cnt, z)
 			}
 			histPerMethod[method] = hist
 		}
@@ -104,10 +97,11 @@ func GetgRPCHistograms() map[string]map[float64]uint64 {
 	return histPerMethod
 }
 
+// getMethod extracts the grpc_method label value from a set of Prometheus label pairs.
 func getMethod(labels []*dto.LabelPair) string {
-	for _, v := range labels {
-		if *v.Name == "grpc_method" {
-			return *v.Value
+	for _, l := range labels {
+		if l.GetName() == "grpc_method" {
+			return l.GetValue()
 		}
 	}
 	return "UNKNOWN"

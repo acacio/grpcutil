@@ -1,4 +1,4 @@
-/* 
+/*
 Copyright 2021 Acacio Cruz acacio@acacio.coom
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,48 +17,40 @@ limitations under the License.
 package grpcutil
 
 import (
-	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
-	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
-	grpc_ctxtags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
-	grpc_opentracing "github.com/grpc-ecosystem/go-grpc-middleware/tracing/opentracing"
+	"math"
+	"time"
+
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
-	"time"
-	"math"
 )
 
-
+// KeepAliveDefault returns a gRPC ServerOption with sensible keepalive defaults:
+// connections are kept alive indefinitely, with a 2-hour ping interval and 30-second timeout.
 func KeepAliveDefault() grpc.ServerOption {
-		return grpc.KeepaliveParams(keepalive.ServerParameters{
-			MaxConnectionIdle:     time.Duration(math.MaxInt64),
-			MaxConnectionAge:      time.Duration(math.MaxInt64),
-			MaxConnectionAgeGrace: time.Duration(math.MaxInt64),
-			Time:                  2 * time.Hour,
-			Timeout:               30 * time.Second,
-		})
+	return grpc.KeepaliveParams(keepalive.ServerParameters{
+		MaxConnectionIdle:     time.Duration(math.MaxInt64),
+		MaxConnectionAge:      time.Duration(math.MaxInt64),
+		MaxConnectionAgeGrace: time.Duration(math.MaxInt64),
+		Time:                  2 * time.Hour,
+		Timeout:               30 * time.Second,
+	})
 }
 
-// ServerOptions return the chain of ServerOptions incl. middleware
+// DefaultServerOptions returns the provided ServerOptions extended with default middleware:
+// Prometheus metrics collection and panic recovery for both unary and streaming RPCs.
+// Uses gRPC's built-in chain interceptors (available since gRPC v1.21).
 func DefaultServerOptions(srvOpts []grpc.ServerOption) []grpc.ServerOption {
 	srvOpts = append(srvOpts,
-		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(
-			grpc_ctxtags.StreamServerInterceptor(),
-			grpc_opentracing.StreamServerInterceptor(),
+		grpc.ChainStreamInterceptor(
 			grpc_prometheus.StreamServerInterceptor,
-			// grpc_zap.StreamServerInterceptor(zapLogger),
-			// grpc_auth.StreamServerInterceptor(myAuthFunction),
 			grpc_recovery.StreamServerInterceptor(),
-		)))
-	srvOpts = append(srvOpts,
-		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
-			grpc_ctxtags.UnaryServerInterceptor(),
-			grpc_opentracing.UnaryServerInterceptor(),
+		),
+		grpc.ChainUnaryInterceptor(
 			grpc_prometheus.UnaryServerInterceptor,
-			// grpc_zap.UnaryServerInterceptor(zapLogger),
-			// grpc_auth.UnaryServerInterceptor(myAuthFunction),
 			grpc_recovery.UnaryServerInterceptor(),
-		)))
-
+		),
+	)
 	return srvOpts
 }

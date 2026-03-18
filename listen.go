@@ -1,20 +1,38 @@
+/*
+Copyright 2021 Acacio Cruz acacio@acacio.coom
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package grpcutil
 
 import (
-	"net"
 	"log"
-  "google.golang.org/grpc"
+	"net"
+
+	"google.golang.org/grpc"
 )
 
+// Serve starts the gRPC server listening on the given port (e.g. ":50051").
+// Calls log.Fatalf on listener or server errors.
 func Serve(s *grpc.Server, port string) {
+	lis, err := net.Listen("tcp", port)
+	if err != nil {
+		log.Fatalf("failed to listen on %s: %v", port, err)
+	}
 
-  lis, err := net.Listen("tcp", port)
-  if err != nil {
-    log.Fatalf("failed to listen: %v", err)
-  }
-
-  log.Print("Starting gRPC..." + port)
-  if errsrv := s.Serve(lis); errsrv != nil {
-    log.Fatalf("Could not start gRPC server: %v", errsrv)
-  }
+	log.Printf("Starting gRPC server on %s\n", port)
+	if err := s.Serve(lis); err != nil {
+		log.Fatalf("gRPC server stopped with error: %v", err)
+	}
 }
