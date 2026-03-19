@@ -4,6 +4,7 @@ go 1.24.0
 
 require (
 	github.com/acacio/tlsutil v0.3.0
+	github.com/acacio/totp-token v1.2.2
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/improbable-eng/grpc-web v0.15.0
@@ -13,7 +14,6 @@ require (
 )
 
 require (
-	github.com/acacio/totp-token v1.2.2 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.1.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect

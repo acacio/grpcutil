@@ -23,16 +23,18 @@ import (
 	"google.golang.org/grpc"
 )
 
+var logFatalf = log.Fatalf
+
 // Serve starts the gRPC server listening on the given port (e.g. ":50051").
 // Calls log.Fatalf on listener or server errors.
 func Serve(s *grpc.Server, port string) {
 	lis, err := net.Listen("tcp", port)
 	if err != nil {
-		log.Fatalf("failed to listen on %s: %v", port, err)
+		logFatalf("failed to listen on %s: %v", port, err)
 	}
 
 	log.Printf("Starting gRPC server on %s\n", port)
 	if err := s.Serve(lis); err != nil {
-		log.Fatalf("gRPC server stopped with error: %v", err)
+		logFatalf("gRPC server stopped with error: %v", err)
 	}
 }

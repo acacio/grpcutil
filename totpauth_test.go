@@ -442,3 +442,12 @@ func TestTOTPAuth_EndToEnd_Lockout(t *testing.T) {
 		t.Errorf("expected ResourceExhausted for lockout, got: %s", st.Code())
 	}
 }
+
+func TestTOTPAuth_GetRequestMetadata_OTPError(t *testing.T) {
+	// Creating an empty Totp struct which fails on OTP() call since it's uninitialized
+	auth := NewTOTPAuth(&twofactor.Totp{})
+	_, err := auth.GetRequestMetadata(context.Background())
+	if err == nil {
+		t.Error("expected error when OTP generation fails")
+	}
+}

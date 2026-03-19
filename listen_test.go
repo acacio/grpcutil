@@ -79,3 +79,42 @@ func TestServe_StartsAndServesRequests(t *testing.T) {
 		t.Errorf("expected SERVING, got: %v", resp.GetStatus())
 	}
 }
+
+func TestServe_ListenError(t *testing.T) {
+	original := logFatalf
+	defer func() { logFatalf = original }()
+	logFatalf = func(format string, v ...interface{}) {
+		panic(fmt.Sprintf(format, v...))
+	}
+
+	defer func() {
+		if r := recover(); r == nil {
+			t.Error("expected panic from mock logFatalf on Listen error")
+		}
+	}()
+
+	// use an invalid port format
+	Serve(grpc.NewServer(), "invalid-port")
+}
+
+func TestServe_ServeError(t *testing.T) {
+	original := logFatalf
+	defer func() { logFatalf = original }()
+	logFatalf = func(format string, v ...interface{}) {
+		panic(fmt.Sprintf(format, v...))
+	}
+
+	defer func() {
+		if r := recover(); r == nil {
+			t.Error("expected panic from mock logFatalf on Serve error")
+		}
+	}()
+
+	s := grpc.NewServer()
+	port := findFreePort(t)
+	addr := fmt.Sprintf("127.0.0.1:%d", port)
+	
+	// Stop the server immediately so Serve(lis) will return an error
+	s.Stop()
+	Serve(s, addr)
+}
